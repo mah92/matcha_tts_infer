@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
     std::locale::global(std::locale("en_US.UTF-8"));
 
     // ----- Default paths (can be overridden) -----
-    std::string matcha_model = "/home/oem/Basir/TTS/Matcha/Trained/onnx/matcha-fa_en-khadijah-22050-3.onnx";
+    std::string matcha_model = "/home/oem/Basir/TTS/Matcha/Trained/onnx/zahra/zahra-22050-5.onnx";
     std::string vocoder_model = "/home/oem/Basir/TTS/vocos22.onnx";
     std::string tokens_file = "/home/oem/Basir/TTS/Matcha/Matcha-TTS/configs/tokens/tokens_sherpa_with_fa.txt";
     std::string espeak_data = "/home/oem/Basir/TTS/Piper/piper_linux_x86_64/piper/espeak-ng-data";
