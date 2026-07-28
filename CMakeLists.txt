@@ -31,10 +31,10 @@ message(STATUS "ONNX Runtime include: ${ONNX_RUNTIME_INCLUDE}")
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(ESPEAK REQUIRED espeak-ng)
 
-# ---- Dependency paths (all submodules under third_party/) ----
-set(NORMALIZE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/NormalizeText)
-set(HAZM_CPP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/hazm_cpp)
-set(EZAFE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/persian-ezafe-albert-cpp)
+# ---- Dependency paths (NormalizeText at root, deps inside) ----
+set(NORMALIZE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/NormalizeText)
+set(HAZM_CPP_DIR ${NORMALIZE_DIR}/hazm_cpp)
+set(EZAFE_DIR ${NORMALIZE_DIR}/persian-ezafe-albert-cpp)
 
 # ---- normalize sources ----
 set(NORMALIZE_SOURCES

@@ -177,6 +177,7 @@ static void print_usage(const char* prog) {
               << "  --homograph <path>          Homograph data JSON path\n"
               << "  --shakkelha <path>          Shakkelha ONNX model path\n"
               << "  --output <path>             Output WAV file (default: output.wav)\n"
+              << "  --play                      Play audio immediately after generation\n"
               << "  --temperature <float>       Sampling temperature (default: 0.667)\n"
               << "  --speaking-rate <float>     Speaking rate (default: 1.0)\n"
               << "  --main-lang <EN|FA|AR>      Main language (default: FA)\n"
@@ -207,6 +208,7 @@ int main(int argc, char* argv[]) {
     std::string shakkelha_onnx = "./shakkelha.onnx";
     std::string text;
     std::string output_wav = "output.wav";
+    bool play_audio = false;
     float temperature = 0.667f;
     float speaking_rate = 1.0f;
     std::string main_lang_str = "FA";
@@ -237,6 +239,7 @@ int main(int argc, char* argv[]) {
         else if (arg == "--homograph")     homograph_data = require_val("--homograph");
         else if (arg == "--shakkelha")     shakkelha_onnx = require_val("--shakkelha");
         else if (arg == "--output")        output_wav = require_val("--output");
+        else if (arg == "--play")          play_audio = true;
         else if (arg == "--temperature")   temperature = std::stof(require_val("--temperature"));
         else if (arg == "--speaking-rate") speaking_rate = std::stof(require_val("--speaking-rate"));
         else if (arg == "--main-lang")     main_lang_str = require_val("--main-lang");
@@ -425,6 +428,12 @@ int main(int argc, char* argv[]) {
     std::cout << "Duration: " << wav_secs << "s" << std::endl;
     std::cout << "Total time: " << total_secs << "s" << std::endl;
     std::cout << "RTF: " << (total_secs / wav_secs) << std::endl;
+
+    // Play audio if requested
+    if (play_audio) {
+        std::string cmd = "ffplay -nodisp -autoexit \"" + output_wav + "\" 2>/dev/null";
+        std::system(cmd.c_str());
+    }
 
     return 0;
 }

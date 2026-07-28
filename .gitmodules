@@ -1,9 +1,3 @@
-[submodule "third_party/NormalizeText"]
-	path = third_party/NormalizeText
+[submodule "NormalizeText"]
+	path = NormalizeText
 	url = /home/oem/Basir/G2P/NormalizeText
-[submodule "third_party/persian-ezafe-albert-cpp"]
-	path = third_party/persian-ezafe-albert-cpp
-	url = /home/oem/Basir/G2P/persian-ezafe-albert-cpp
-[submodule "third_party/hazm_cpp"]
-	path = third_party/hazm_cpp
-	url = /home/oem/Basir/G2P/hazm/hazm_cpp
