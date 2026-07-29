@@ -94,7 +94,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 # Define data directory for hazm_cpp (relative to cwd at runtime)
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    HAZM_DATA_DIR="./hazm_data/"
+    HAZM_DATA_DIR="./assets/"
 )
 
 # Link libraries
