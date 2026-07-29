@@ -180,6 +180,7 @@ static void print_usage(const char* prog) {
               << "  --play                      Play audio immediately after generation\n"
               << "  --temperature <float>       Sampling temperature (default: 0.667)\n"
               << "  --speaking-rate <float>     Speaking rate (default: 1.0)\n"
+              << "  --sample-rate <int>         Output sample rate (default: 22050)\n"
               << "  --main-lang <EN|FA|AR>      Main language (default: FA)\n"
               << "  --gpu                       Use GPU provider (default: CPU)\n"
               << "  --help                      Show this help\n"
@@ -211,6 +212,7 @@ int main(int argc, char* argv[]) {
     bool play_audio = false;
     float temperature = 0.667f;
     float speaking_rate = 1.0f;
+    int sample_rate = 22050;
     std::string main_lang_str = "FA";
     bool use_gpu = false;
     (void)use_gpu; // TODO: GPU provider support
@@ -242,6 +244,7 @@ int main(int argc, char* argv[]) {
         else if (arg == "--play")          play_audio = true;
         else if (arg == "--temperature")   temperature = std::stof(require_val("--temperature"));
         else if (arg == "--speaking-rate") speaking_rate = std::stof(require_val("--speaking-rate"));
+        else if (arg == "--sample-rate")   sample_rate = std::stoi(require_val("--sample-rate"));
         else if (arg == "--main-lang")     main_lang_str = require_val("--main-lang");
         else if (arg == "--gpu")           use_gpu = true;
         else if (arg == "--help")          { print_usage(argv[0]); return 0; }
@@ -380,7 +383,7 @@ int main(int argc, char* argv[]) {
     Ort::Session vocoder_session(env, vocoder_model.c_str(), session_opts);
     std::cout << "Vocoder model loaded" << std::endl;
 
-    // Build vocoder inputs: mel_spec [1, 80, mel_len], denoise [1] = 0.0
+    // Build vocoder inputs: mel_spec [1, 80, mel_frames], denoise [1] = 0.0
     std::vector<int64_t> mel_input_shape = {1, 80, mel_frames};
     std::vector<float> denoise_data = {0.0f};
 
@@ -419,9 +422,9 @@ int main(int argc, char* argv[]) {
     // STEP 6: Write WAV file
     // ========================================================================
     std::vector<float> audio(wave_data, wave_data + num_samples);
-    write_wav(output_wav, audio, 22050);
+    write_wav(output_wav, audio, sample_rate);
 
-    double wav_secs = num_samples / 22050.0;
+    double wav_secs = num_samples / (double)sample_rate;
     double total_secs = std::chrono::duration<double>(t5 - t0).count();
     std::cout << "\n=== Done ===" << std::endl;
     std::cout << "Output: " << output_wav << std::endl;
