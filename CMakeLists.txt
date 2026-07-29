@@ -83,7 +83,7 @@ add_executable(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${NORMALIZE_DIR}
     ${NORMALIZE_DIR}/language_detector
-    ${NORMALIZE_DIR}/third_party
+    ${NORMALIZE_DIR}/json_cpp
     ${NORMALIZE_DIR}/homograph
     ${NORMALIZE_DIR}/persian_phoneme
     ${HAZM_CPP_DIR}/include
