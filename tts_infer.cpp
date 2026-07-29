@@ -199,13 +199,13 @@ int main(int argc, char* argv[]) {
     std::string tokens_file = "/home/oem/Basir/TTS/Matcha/Matcha-TTS/configs/tokens/tokens_sherpa_with_fa.txt";
     std::string espeak_data = "/home/oem/Basir/TTS/Piper/piper_linux_x86_64/piper/espeak-ng-data";
     // NormalizeText resources (relative to cwd by default)
-    std::string ezafe_onnx     = "./ezafe_model/model_quantized.onnx";
-    std::string ezafe_spiece   = "./ezafe_model/spiece.model";
-    std::string hazm_words     = "./hazm_data/words.dat";
-    std::string hazm_verbs     = "./hazm_data/verbs.dat";
-    std::string hazm_stopwords = "./hazm_data/stopwords.dat";
-    std::string homograph_data = "./homograph/homograph_data.json";
-    std::string shakkelha_onnx = "./shakkelha.onnx";
+    std::string ezafe_onnx     = "./assets/ezafe_model.onnx";
+    std::string ezafe_spiece   = "./assets/ezafe_spiece.model";
+    std::string hazm_words     = "./assets/hazm_words.dat";
+    std::string hazm_verbs     = "./assets/hazm_verbs.dat";
+    std::string hazm_stopwords = "./assets/hazm_stopwords.dat";
+    std::string homograph_data = "./assets/homograph_data.json";
+    std::string shakkelha_onnx = "./assets/shakkelha.onnx";
     std::string text;
     std::string output_wav = "output.wav";
     bool play_audio = false;

@@ -7,6 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"
 BIN="$BUILD_DIR/MatchaTTSInfer"
+RUN_DIR="$SCRIPT_DIR/NormalizeText"   # assets/ lives here
 
 # Models (adjust paths if needed)
 MATCHA_MODEL="/home/oem/Basir/TTS/Matcha/Trained/onnx/zahra/zahra-22050-5.onnx"
@@ -51,7 +52,7 @@ for TEXT in "${TESTS[@]}"; do
     OUTPUT="/tmp/matcha_test_$$.wav"
     echo -n "[TEST] \"$TEXT\" ... "
 
-    if "$BIN" \
+    if cd "$RUN_DIR" && "$BIN" \
         --text "$TEXT" \
         --matcha-model "$MATCHA_MODEL" \
         --vocoder-model "$VOCODER_MODEL" \
