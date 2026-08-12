@@ -260,6 +260,12 @@ static std::unique_ptr<Ort::Session> g_vocoder_session;
 static bool load_all_models(const SynthConfig& cfg) {
     if (g_models_loaded) return true;
 
+    // Model paths are passed externally — validate before loading.
+    if (cfg.matcha_model.empty() || cfg.vocoder_model.empty() || cfg.tokens_file.empty()) {
+        std::cerr << "Error: missing model paths. Pass --matcha-model, --vocoder-model, --tokens (and optionally --espeak-data)." << std::endl;
+        return false;
+    }
+
     auto t0 = std::chrono::high_resolution_clock::now();
 
     g_env.reset(new Ort::Env(ORT_LOGGING_LEVEL_WARNING, "tts_infer"));
@@ -704,12 +710,12 @@ static void print_usage(const char* prog) {
 int main(int argc, char* argv[]) {
     std::locale::global(std::locale("en_US.UTF-8"));
 
-    // ----- Default paths -----
+    // ----- Paths (passed externally via CLI — no hardcoded defaults) -----
     SynthConfig cfg;
-    cfg.matcha_model  = std::string(getenv("HOME")) + "/.hermes/skills/hermes-persian-skills/hermes-tts/models/matcha-fa_en-zahra-22050-5.onnx";
-    cfg.vocoder_model = std::string(getenv("HOME")) + "/.hermes/skills/hermes-persian-skills/hermes-tts/models/vocos22.onnx";
-    cfg.tokens_file   = std::string(getenv("HOME")) + "/.hermes/skills/hermes-persian-skills/hermes-tts/models/tokens_sherpa_with_fa.txt";
-    cfg.espeak_data   = "/home/oem/Basir/TTS/Piper/piper_linux_x86_64/piper/espeak-ng-data";
+    // Model paths: REQUIRED via CLI flags (--matcha-model, --vocoder-model,
+    // --tokens, --espeak-data). The caller (tts.py) passes them explicitly.
+    // NormalizeText assets live relative to the binary (./assets/) — these
+    // are part of the match_tts_infer repo, not external models.
     cfg.ezafe_onnx     = "./assets/ezafe_model.onnx";
     cfg.ezafe_spiece   = "./assets/ezafe_spiece.model";
     cfg.hazm_words     = "./assets/hazm_words.dat";
@@ -801,8 +807,18 @@ int main(int argc, char* argv[]) {
         if (pid < 0) { perror("fork"); return 1; }
         if (pid == 0) {
             chdir(norm_dir.c_str());
-            execl(self_path, self_path, "--daemon", nullptr);
-            perror("execl");
+            // Forward all original args to the daemon so model paths
+            // (--matcha-model, --vocoder-model, --tokens, --espeak-data)
+            // are preserved. The daemon ignores --text/--output.
+            std::vector<char*> child_argv;
+            child_argv.push_back(self_path);
+            child_argv.push_back(const_cast<char*>("--daemon"));
+            for (int i = 1; i < argc; ++i) {
+                child_argv.push_back(argv[i]);
+            }
+            child_argv.push_back(nullptr);
+            execv(self_path, child_argv.data());
+            perror("execv");
             _exit(1);
         }
 
