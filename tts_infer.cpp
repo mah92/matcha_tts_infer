@@ -179,7 +179,7 @@ static void print_usage(const char* prog) {
               << "  --output <path>             Output WAV file (default: output.wav)\n"
               << "  --play                      Play audio immediately after generation\n"
               << "  --temperature <float>       Sampling temperature (default: 0.667)\n"
-              << "  --speaking-rate <float>     Speaking rate (default: 1.0)\n"
+              << "  --speed <float>             Speed: 1.0=1x, 1.5=1.5x, 2.0=2x (default: 1.0)\n"
               << "  --sample-rate <int>         Output sample rate (default: 22050)\n"
               << "  --main-lang <EN|FA|AR>      Main language (default: FA)\n"
               << "  --gpu                       Use GPU provider (default: CPU)\n"
@@ -211,6 +211,7 @@ int main(int argc, char* argv[]) {
     std::string output_wav = "output.wav";
     bool play_audio = false;
     float temperature = 0.667f;
+    float speed = 1.0f;
     float speaking_rate = 1.0f;
     int sample_rate = 22050;
     std::string main_lang_str = "FA";
@@ -243,7 +244,10 @@ int main(int argc, char* argv[]) {
         else if (arg == "--output")        output_wav = require_val("--output");
         else if (arg == "--play")          play_audio = true;
         else if (arg == "--temperature")   temperature = std::stof(require_val("--temperature"));
-        else if (arg == "--speaking-rate") speaking_rate = std::stof(require_val("--speaking-rate"));
+        else if (arg == "--speed") {
+            speed = std::stof(require_val("--speed"));
+            speaking_rate = 1.0f / speed;
+        }
         else if (arg == "--sample-rate")   sample_rate = std::stoi(require_val("--sample-rate"));
         else if (arg == "--main-lang")     main_lang_str = require_val("--main-lang");
         else if (arg == "--gpu")           use_gpu = true;
