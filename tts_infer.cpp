@@ -790,34 +790,34 @@ int main(int argc, char* argv[]) {
         }
         self_path[len] = '\0';
 
-        // Change to NormalizeText/ (sibling of build/)
         std::string bin_dir = self_path;
         auto last_slash = bin_dir.rfind('/');
         if (last_slash != std::string::npos) {
-            bin_dir = bin_dir.substr(0, last_slash); // build/
+            bin_dir = bin_dir.substr(0, last_slash);
         }
         std::string norm_dir = bin_dir + "/../NormalizeText";
 
         pid_t pid = fork();
-        if (pid < 0) {
-            perror("fork");
-            return 1;
-        }
+        if (pid < 0) { perror("fork"); return 1; }
         if (pid == 0) {
-            // Child: cd to NormalizeText, start daemon
             chdir(norm_dir.c_str());
             execl(self_path, self_path, "--daemon", nullptr);
             perror("execl");
             _exit(1);
         }
 
-        // Wait for daemon to be ready
-        for (int i = 0; i < 50; i++) {
-            usleep(100000);
-            if (daemon_is_running()) break;
+        std::cerr << "Daemon starting (PID " << pid << ")...\n";
+
+        // Wait for daemon to finish loading (10s timeout)
+        for (int i = 0; i < 100; i++) {
+            usleep(100000);  // 100ms × 100 = 10s
+            if (daemon_is_running()) {
+                std::cerr << "Daemon ready.\n";
+                break;
+            }
         }
         if (!daemon_is_running()) {
-            std::cerr << "Error: daemon failed to start" << std::endl;
+            std::cerr << "Error: daemon did not start within 10s\n";
             return 1;
         }
     }
