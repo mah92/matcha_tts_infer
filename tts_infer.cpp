@@ -15,6 +15,7 @@
 #include <chrono>
 #include <locale>
 #include <codecvt>
+#include <complex>
 
 // POSIX sockets + process control
 #include <sys/socket.h>
@@ -152,6 +153,86 @@ static std::vector<int64_t> intersperse_blanks(const std::vector<int64_t>& ids, 
         result[i * 2 + 1] = ids[i];
     }
     return result;
+}
+
+// ============================================================================
+// FFT / ISTFT — for reconstructing waveform from Vocos mag/x/y (ISTFT) output.
+// k2-fsa vocos-22khz-univ.onnx outputs (mag, x, y) instead of a direct waveform.
+// ============================================================================
+static void fft(std::vector<std::complex<float>>& a, bool invert) {
+    int n = (int)a.size();
+    // bit-reversal permutation
+    for (int i = 1, j = 0; i < n; i++) {
+        int bit = n >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) std::swap(a[i], a[j]);
+    }
+    for (int len = 2; len <= n; len <<= 1) {
+        double ang = 2.0 * M_PI / len * (invert ? 1.0 : -1.0);
+        std::complex<float> wlen((float)std::cos(ang), (float)std::sin(ang));
+        for (int i = 0; i < n; i += len) {
+            std::complex<float> w(1.0f, 0.0f);
+            for (int j = 0; j < len / 2; j++) {
+                std::complex<float> u = a[i + j];
+                std::complex<float> v = a[i + j + len / 2] * w;
+                a[i + j] = u + v;
+                a[i + j + len / 2] = u - v;
+                w *= wlen;
+            }
+        }
+    }
+    if (invert) {
+        for (auto& x : a) x /= (float)n;
+    }
+}
+
+// Reconstruct waveform from Vocos ISTFT head output: S = mag * (x + i*y),
+// then overlap-add inverse STFT (hann window, center=True, hop=256, n_fft=1024).
+static std::vector<float> vocos_istft(const float* mag, const float* x, const float* y,
+                                      int n_fft, int hop, int frames) {
+    int n_bins = n_fft / 2 + 1;
+    int output_len = hop * (frames - 1);
+
+    std::vector<float> out((size_t)output_len, 0.0f);
+    std::vector<float> win_sum((size_t)output_len, 0.0f);
+
+    // hann window
+    std::vector<float> window((size_t)n_fft);
+    for (int i = 0; i < n_fft; i++) {
+        window[i] = 0.5f * (1.0f - std::cos(2.0f * M_PI * i / (n_fft - 1)));
+    }
+
+    for (int f = 0; f < frames; f++) {
+        std::vector<std::complex<float>> spec((size_t)n_fft);
+        // ONNX mag/x/y are bin-major: [bin][frame] → element = bin * frames + frame
+        for (int k = 0; k < n_bins; k++) {
+            size_t idx = (size_t)k * frames + f;
+            spec[k] = { mag[idx] * x[idx], mag[idx] * y[idx] };
+        }
+        // conjugate symmetry for the upper half
+        for (int k = 1; k < n_fft / 2; k++) {
+            spec[n_fft - k] = std::conj(spec[k]);
+        }
+
+        fft(spec, true);  // inverse FFT
+
+        // overlap-add: frame f at offset f*hop, then trim n_fft/2 both sides
+        int start = f * hop - n_fft / 2;
+        for (int i = 0; i < n_fft; i++) {
+            int pos = start + i;
+            if (pos >= 0 && pos < output_len) {
+                out[pos] += spec[i].real() * window[i];
+                win_sum[pos] += window[i] * window[i];
+            }
+        }
+    }
+
+    for (int i = 0; i < output_len; i++) {
+        if (win_sum[i] > 1e-6f) out[i] /= win_sum[i];
+    }
+
+    return out;
 }
 
 // ============================================================================
@@ -391,44 +472,51 @@ static SynthResult synthesize(const SynthConfig& cfg, const std::string& text,
     int64_t mel_len = mel_lengths_data_ptr[0];
     std::cout << "Mel length: " << mel_len << " frames" << std::endl;
 
-    // --- Vocos vocoder inference ---
+    // --- Vocos vocoder inference (k2-fsa vocos-22khz-univ: mels → mag/x/y) ---
     std::cout << "\n=== Vocoder Inference ===" << std::endl;
 
     std::vector<int64_t> mel_input_shape = {1, 80, mel_frames};
-    std::vector<float> denoise_data = {0.0f};
 
     Ort::Value mel_vocoder_tensor = Ort::Value::CreateTensor<float>(
         g_mem_info, mel_data, mel_shape[0] * mel_shape[1] * mel_shape[2],
         mel_input_shape.data(), mel_input_shape.size());
-    Ort::Value denoise_tensor = Ort::Value::CreateTensor<float>(
-        g_mem_info, denoise_data.data(), 1,
-        (std::vector<int64_t>{1}).data(), 1);
 
-    const char* vocoder_input_names[] = {"mel_spec", "denoise"};
-    const char* vocoder_output_names[] = {"wave"};
+    const char* vocoder_input_names[] = {"mels"};
+    const char* vocoder_output_names[] = {"mag", "x", "y"};
 
     std::vector<Ort::Value> vocoder_inputs;
     vocoder_inputs.push_back(std::move(mel_vocoder_tensor));
-    vocoder_inputs.push_back(std::move(denoise_tensor));
 
     std::cout << "Running vocoder inference..." << std::endl;
     auto t_vocos_start = std::chrono::high_resolution_clock::now();
     auto vocoder_outputs = g_vocoder_session->Run(
         Ort::RunOptions{nullptr},
         vocoder_input_names, vocoder_inputs.data(), vocoder_inputs.size(),
-        vocoder_output_names, 1);
+        vocoder_output_names, 3);
     auto t_vocos_end = std::chrono::high_resolution_clock::now();
     result.vocos_ms = std::chrono::duration<double, std::milli>(t_vocos_end - t_vocos_start).count();
     std::cout << "Vocoder inference done in " << (result.vocos_ms / 1000.0) << "s" << std::endl;
     fprintf(stderr, "[TIMING] Vocos          : %.1f ms\n", result.vocos_ms);
 
-    float* wave_data = vocoder_outputs[0].GetTensorMutableData<float>();
-    auto wave_info = vocoder_outputs[0].GetTensorTypeAndShapeInfo();
-    auto wave_shape = wave_info.GetShape();
-    int64_t num_samples = wave_shape[1];
-    std::cout << "Wave shape: [" << wave_shape[0] << ", " << num_samples << "]" << std::endl;
+    // Reconstruct waveform via ISTFT from (mag, x, y)
+    float* mag_data = vocoder_outputs[0].GetTensorMutableData<float>();
+    float* x_data = vocoder_outputs[1].GetTensorMutableData<float>();
+    float* y_data = vocoder_outputs[2].GetTensorMutableData<float>();
+    auto mag_info = vocoder_outputs[0].GetTensorTypeAndShapeInfo();
+    auto mag_shape = mag_info.GetShape();
+    // mag_shape = [1, n_bins(=n_fft/2+1), frames]
+    int n_bins = (int)mag_shape[1];
+    int n_fft = 2 * (n_bins - 1);
+    int hop = 256;
+    int64_t vocos_frames = mag_shape[2];
+    std::cout << "Vocos output: [" << mag_shape[0] << ", " << n_bins << ", " << vocos_frames
+              << "] (n_fft=" << n_fft << ", hop=" << hop << ")" << std::endl;
 
-    std::vector<float> audio(wave_data, wave_data + num_samples);
+    std::vector<float> audio = vocos_istft(mag_data, x_data, y_data,
+                                           n_fft, hop, (int)vocos_frames);
+    int64_t num_samples = (int64_t)audio.size();
+    std::cout << "Wave shape: [1, " << num_samples << "]" << std::endl;
+
     std::string actual_output = output_path.empty() ? "output.wav" : output_path;
     write_wav(actual_output, audio, cfg.sample_rate);
 
