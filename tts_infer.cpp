@@ -706,9 +706,9 @@ int main(int argc, char* argv[]) {
 
     // ----- Default paths -----
     SynthConfig cfg;
-    cfg.matcha_model  = std::string(getenv("HOME")) + "/.hermes/skills/hermes-bale-messenger-skills/hermes-tts/models/matcha-fa_en-zahra-22050-5.onnx";
-    cfg.vocoder_model = std::string(getenv("HOME")) + "/.hermes/skills/hermes-bale-messenger-skills/hermes-tts/models/vocos22.onnx";
-    cfg.tokens_file   = std::string(getenv("HOME")) + "/.hermes/skills/hermes-bale-messenger-skills/hermes-tts/models/tokens_sherpa_with_fa.txt";
+    cfg.matcha_model  = std::string(getenv("HOME")) + "/.hermes/skills/hermes-persian-skills/hermes-tts/models/matcha-fa_en-zahra-22050-5.onnx";
+    cfg.vocoder_model = std::string(getenv("HOME")) + "/.hermes/skills/hermes-persian-skills/hermes-tts/models/vocos22.onnx";
+    cfg.tokens_file   = std::string(getenv("HOME")) + "/.hermes/skills/hermes-persian-skills/hermes-tts/models/tokens_sherpa_with_fa.txt";
     cfg.espeak_data   = "/home/oem/Basir/TTS/Piper/piper_linux_x86_64/piper/espeak-ng-data";
     cfg.ezafe_onnx     = "./assets/ezafe_model.onnx";
     cfg.ezafe_spiece   = "./assets/ezafe_spiece.model";
