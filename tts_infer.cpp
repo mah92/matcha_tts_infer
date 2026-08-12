@@ -225,7 +225,7 @@ struct SynthConfig {
     std::string shakkelha_onnx;
     std::string main_lang_str = "FA";
     float temperature = 0.667f;
-    float speed = 1.0f;
+    float speed = 1.5f;
     int sample_rate = 22050;
     bool use_gpu = false;
 };
@@ -633,7 +633,6 @@ static bool daemon_is_running() {
 
 static int run_client(const SynthConfig& cfg, const std::string& text,
                        const std::string& output_path, bool play_audio) {
-    (void)cfg; // config is on the daemon side
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (fd < 0) { perror("socket"); return 1; }
     struct sockaddr_un addr;
@@ -645,6 +644,7 @@ static int run_client(const SynthConfig& cfg, const std::string& text,
     }
     std::string request = "{\"text\":" + json_str(text);
     if (!output_path.empty()) request += ",\"output\":" + json_str(output_path);
+    request += ",\"speed\":" + std::to_string(cfg.speed);
     request += "}";
     if (!write_line(fd, request)) { std::cerr << "Error: failed to send\n"; close(fd); return 1; }
     std::string response = read_line(fd, 30);
@@ -690,7 +690,7 @@ static void print_usage(const char* prog) {
               << "    --output <path>             Output WAV file (default: output.wav)\n"
               << "    --play                      Play audio after generation\n"
               << "    --temperature <float>       Temperature (default: 0.667)\n"
-              << "    --speed <float>             Speed: 1.0=1x, 1.5=1.5x, 2.0=2x (default: 1.0)\n"
+              << "    --speed <float>             Speed: 1.0=1x, 1.5=1.5x, 2.0=2x (default: 1.5)\n"
               << "    --sample-rate <int>         Output sample rate (default: 22050)\n"
               << "    --main-lang <EN|FA|AR>      Main language (default: FA)\n"
               << "    --gpu                       Use GPU (default: CPU)\n"
